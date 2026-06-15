@@ -1,23 +1,34 @@
 import { useState } from 'react';
-import { Fuel, Plus, TrendingDown, TrendingUp, MapPin, DollarSign, Droplets, BarChart3 } from 'lucide-react';
+import { Fuel, Plus, TrendingDown, TrendingUp, MapPin, DollarSign, Droplets, BarChart3, Save } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, Cell } from 'recharts';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatCard from '@/components/business/StatCard';
 import StatusBadge from '@/components/business/StatusBadge';
+import Modal from '@/components/business/Modal';
 import { useFuelStore } from '@/store/useFuelStore';
 import { useVoyageStore } from '@/store/useVoyageStore';
 import { useFishingStore } from '@/store/useFishingStore';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import type { FuelRecord } from '@/types';
 
 const CHART_COLORS = ['#FF6B35', '#44AF69'];
 
 export default function FuelPage() {
-  const { records, currentStock, fuelCapacity, getTotalConsumption, getTotalRefuel, getConsumptionByDate, getFuelPercentage } = useFuelStore();
+  const { records, currentStock, fuelCapacity, getTotalConsumption, getTotalRefuel, getConsumptionByDate, getFuelPercentage, addRecord } = useFuelStore();
   const { currentVoyage } = useVoyageStore();
   const { ports } = useFishingStore();
   const [activeTab, setActiveTab] = useState<'records' | 'stats'>('records');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    type: 'consumption' as 'consumption' | 'refuel',
+    amount: '',
+    price: '',
+    port: '',
+    operator: '',
+    note: '',
+  });
 
   const fuelPercent = getFuelPercentage();
   const totalConsumption = currentVoyage ? getTotalConsumption(currentVoyage.id) : 0;
@@ -108,6 +119,41 @@ export default function FuelPage() {
     },
   ];
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newRecord: FuelRecord = {
+      id: `f${Date.now()}`,
+      voyageId: currentVoyage?.id || '',
+      type: formData.type,
+      amount: parseFloat(formData.amount) || 0,
+      unitPrice: parseFloat(formData.price) || 0,
+      portId: formData.port || undefined,
+      operator: formData.operator,
+      recordTime: new Date().toISOString(),
+      remark: formData.note,
+    };
+
+    addRecord(newRecord);
+    setIsModalOpen(false);
+    setFormData({
+      type: 'consumption',
+      amount: '',
+      price: '',
+      port: '',
+      operator: '',
+      note: '',
+    });
+  };
+
   return (
     <div>
       <PageHeader
@@ -115,7 +161,10 @@ export default function FuelPage() {
         subtitle="油料消耗记录、补给港口管理与成本核算"
         icon={Fuel}
         actions={
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-5 h-5" />
             新增记录
           </button>
@@ -391,6 +440,133 @@ export default function FuelPage() {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="新增油料记录"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">记录类型 *</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="type"
+                  value="consumption"
+                  checked={formData.type === 'consumption'}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-[#FF6B35] focus:ring-[#FF6B35]"
+                  required
+                />
+                <span className="text-[#1A1A2E]">消耗</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="type"
+                  value="refuel"
+                  checked={formData.type === 'refuel'}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-[#44AF69] focus:ring-[#44AF69]"
+                />
+                <span className="text-[#1A1A2E]">补给</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">数量 (升) *</label>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleInputChange}
+                placeholder="请输入数量"
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">单价 (元/升)</label>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                placeholder="请输入单价"
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">港口 *</label>
+            <select
+              name="port"
+              value={formData.port}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              required
+            >
+              <option value="">请选择港口</option>
+              {ports.map((port) => (
+                <option key={port.id} value={port.id}>
+                  {port.name} - {port.country}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">经办人</label>
+            <input
+              type="text"
+              name="operator"
+              value={formData.operator}
+              onChange={handleInputChange}
+              placeholder="请输入经办人姓名"
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">备注</label>
+            <textarea
+              name="note"
+              value={formData.note}
+              onChange={handleInputChange}
+              placeholder="请输入备注信息"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存记录
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

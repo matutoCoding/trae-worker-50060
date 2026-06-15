@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Users, Plus, Calendar, Clock, Phone, Award, UserCheck, UserX, ChevronRight } from 'lucide-react';
+import { Users, Plus, Calendar, Clock, Phone, Award, UserCheck, UserX, ChevronRight, Save } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatCard from '@/components/business/StatCard';
 import StatusBadge from '@/components/business/StatusBadge';
+import Modal from '@/components/business/Modal';
 import { useCrewStore } from '@/store/useCrewStore';
 import { useVoyageStore } from '@/store/useVoyageStore';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import type { Crew, CrewSchedule } from '@/types';
 
 const SHIFT_COLORS = {
   day: { bg: 'bg-gradient-to-r from-[#F9C80E] to-[#FF6B35]', label: '白班' },
@@ -22,10 +24,29 @@ const STATUS_VARIANTS = {
 };
 
 export default function CrewPage() {
-  const { crewList, schedules, getCurrentWatch, getSchedulesByDate } = useCrewStore();
+  const { crewList, schedules, getCurrentWatch, getSchedulesByDate, addCrew, addSchedule } = useCrewStore();
   const { currentVoyage } = useVoyageStore();
   const [activeTab, setActiveTab] = useState<'crew' | 'schedule'>('crew');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+  const [crewFormData, setCrewFormData] = useState({
+    name: '',
+    position: '',
+    phone: '',
+    skillLevel: '',
+    joinDate: '',
+    remark: '',
+  });
+
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleFormData, setScheduleFormData] = useState({
+    crewId: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
+    shiftType: 'day' as const,
+    duties: '',
+    status: 'scheduled' as const,
+  });
 
   const currentWatch = getCurrentWatch();
   const todaySchedules = getSchedulesByDate(selectedDate);
@@ -151,6 +172,71 @@ export default function CrewPage() {
     return format(date, 'yyyy-MM-dd');
   });
 
+  const handleCrewInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCrewFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleCrewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const newCrew: Crew = {
+      id: `c${Date.now()}`,
+      name: crewFormData.name,
+      position: crewFormData.position,
+      idCard: '',
+      phone: crewFormData.phone,
+      skillLevel: crewFormData.skillLevel,
+      joinDate: crewFormData.joinDate,
+    };
+
+    addCrew(newCrew);
+    setIsCrewModalOpen(false);
+    setCrewFormData({
+      name: '',
+      position: '',
+      phone: '',
+      skillLevel: '',
+      joinDate: '',
+      remark: '',
+    });
+  };
+
+  const handleScheduleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setScheduleFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleScheduleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const newSchedule: CrewSchedule = {
+      id: `s${Date.now()}`,
+      voyageId: currentVoyage?.id || '',
+      crewId: scheduleFormData.crewId,
+      date: scheduleFormData.date,
+      shiftType: scheduleFormData.shiftType,
+      duties: scheduleFormData.duties,
+      status: scheduleFormData.status,
+    };
+
+    addSchedule(newSchedule);
+    setIsScheduleModalOpen(false);
+    setScheduleFormData({
+      crewId: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
+      shiftType: 'day',
+      duties: '',
+      status: 'scheduled',
+    });
+  };
+
   return (
     <div>
       <PageHeader
@@ -158,7 +244,10 @@ export default function CrewPage() {
         subtitle="船员信息管理、排班调度与值更安排"
         icon={Users}
         actions={
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5">
+          <button 
+            onClick={() => setIsCrewModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-5 h-5" />
             添加船员
           </button>
@@ -202,9 +291,18 @@ export default function CrewPage() {
             <Clock className="w-5 h-5 text-[#3E92CC]" />
             当前值更表
           </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-[#4A4A6A]">更新时间：</span>
-            <span className="text-sm font-medium">{format(new Date(), 'yyyy-MM-dd HH:mm', { locale: zhCN })}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsScheduleModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#44AF69] to-[#2D7A4A] text-white rounded-lg font-medium shadow-lg shadow-[#44AF69]/30 hover:shadow-xl hover:shadow-[#44AF69]/40 transition-all duration-300"
+            >
+              <Plus className="w-4 h-4" />
+              新增排班
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#4A4A6A]">更新时间：</span>
+              <span className="text-sm font-medium">{format(new Date(), 'yyyy-MM-dd HH:mm', { locale: zhCN })}</span>
+            </div>
           </div>
         </div>
 
@@ -312,6 +410,225 @@ export default function CrewPage() {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isCrewModalOpen}
+        onClose={() => setIsCrewModalOpen(false)}
+        title="新增船员"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleCrewSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">姓名 *</label>
+              <input
+                type="text"
+                name="name"
+                value={crewFormData.name}
+                onChange={handleCrewInputChange}
+                placeholder="请输入船员姓名"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">职务 *</label>
+              <select
+                name="position"
+                value={crewFormData.position}
+                onChange={handleCrewInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                <option value="">请选择职务</option>
+                <option value="船长">船长</option>
+                <option value="大副">大副</option>
+                <option value="二副">二副</option>
+                <option value="轮机长">轮机长</option>
+                <option value="水手长">水手长</option>
+                <option value="水手">水手</option>
+                <option value="厨师">厨师</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">联系电话 *</label>
+              <input
+                type="tel"
+                name="phone"
+                value={crewFormData.phone}
+                onChange={handleCrewInputChange}
+                placeholder="请输入联系电话"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">技能等级</label>
+              <select
+                name="skillLevel"
+                value={crewFormData.skillLevel}
+                onChange={handleCrewInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              >
+                <option value="">请选择技能等级</option>
+                <option value="一级">一级</option>
+                <option value="二级">二级</option>
+                <option value="三级">三级</option>
+                <option value="四级">四级</option>
+                <option value="五级">五级</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">入职日期 *</label>
+            <input
+              type="date"
+              name="joinDate"
+              value={crewFormData.joinDate}
+              onChange={handleCrewInputChange}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">备注</label>
+            <textarea
+              name="remark"
+              value={crewFormData.remark}
+              onChange={handleCrewInputChange}
+              placeholder="请输入备注信息"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsCrewModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存船员
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        title="新增排班"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleScheduleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">选择船员 *</label>
+              <select
+                name="crewId"
+                value={scheduleFormData.crewId}
+                onChange={handleScheduleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                <option value="">请选择船员</option>
+                {crewList.map(crew => (
+                  <option key={crew.id} value={crew.id}>
+                    {crew.name} - {crew.position}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">排班日期 *</label>
+              <input
+                type="date"
+                name="date"
+                value={scheduleFormData.date}
+                onChange={handleScheduleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">班次类型 *</label>
+            <div className="flex gap-4">
+              {(['day', 'night', 'standby'] as const).map((shift) => (
+                <label key={shift} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="shiftType"
+                    value={shift}
+                    checked={scheduleFormData.shiftType === shift}
+                    onChange={handleScheduleInputChange}
+                    className="w-4 h-4 text-[#3E92CC] focus:ring-[#3E92CC]"
+                    required
+                  />
+                  <span className="text-[#1A1A2E] font-medium">{SHIFT_COLORS[shift].label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">状态</label>
+            <select
+              name="status"
+              value={scheduleFormData.status}
+              onChange={handleScheduleInputChange}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+            >
+              <option value="scheduled">待值班</option>
+              <option value="on_duty">值班中</option>
+              <option value="off_duty">已下班</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">工作职责</label>
+            <textarea
+              name="duties"
+              value={scheduleFormData.duties}
+              onChange={handleScheduleInputChange}
+              placeholder="请输入工作职责"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsScheduleModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存排班
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

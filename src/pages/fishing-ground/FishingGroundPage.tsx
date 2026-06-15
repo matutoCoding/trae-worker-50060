@@ -1,15 +1,29 @@
-import { MapPin, Plus, Thermometer, Waves, Cloud, Navigation, Layers } from 'lucide-react';
+import { useState } from 'react';
+import { MapPin, Plus, Thermometer, Waves, Cloud, Navigation, Layers, Save } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatCard from '@/components/business/StatCard';
+import Modal from '@/components/business/Modal';
 import { useFishingStore } from '@/store/useFishingStore';
 import { useVoyageStore } from '@/store/useVoyageStore';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import type { FishingGround } from '@/types';
 
 export default function FishingGroundPage() {
-  const { grounds, currentWeather } = useFishingStore();
+  const { grounds, currentWeather, addGround } = useFishingStore();
   const { currentVoyage } = useVoyageStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    longitude: 123.5,
+    latitude: 29.8,
+    depth: 60,
+    waterTemp: 18,
+    weather: '晴',
+    seaState: 2,
+    description: '',
+  });
 
   const columns = [
     {
@@ -81,6 +95,49 @@ export default function FishingGroundPage() {
     },
   ];
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: ['longitude', 'latitude', 'depth', 'waterTemp', 'seaState'].includes(name) 
+        ? parseFloat(value) || 0 
+        : value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newGround: FishingGround = {
+      id: `fg${Date.now()}`,
+      voyageId: currentVoyage?.id || 'v1',
+      name: formData.name,
+      longitude: formData.longitude,
+      latitude: formData.latitude,
+      depth: formData.depth,
+      waterTemp: formData.waterTemp,
+      weather: formData.weather,
+      seaState: formData.seaState,
+      description: formData.description,
+      recordTime: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    addGround(newGround);
+    setIsModalOpen(false);
+    setFormData({
+      name: '',
+      longitude: 123.5,
+      latitude: 29.8,
+      depth: 60,
+      waterTemp: 18,
+      weather: '晴',
+      seaState: 2,
+      description: '',
+    });
+  };
+
   return (
     <div>
       <PageHeader
@@ -88,7 +145,10 @@ export default function FishingGroundPage() {
         subtitle="渔场坐标管理、渔区信息与海况天气记录"
         icon={MapPin}
         actions={
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-5 h-5" />
             新增渔场
           </button>
@@ -227,6 +287,149 @@ export default function FishingGroundPage() {
           emptyMessage="暂无渔场记录"
         />
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="新增渔场记录"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">渔场名称 *</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="例如：东海渔区A点"
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">经度 (°E) *</label>
+              <input
+                type="number"
+                name="longitude"
+                value={formData.longitude}
+                onChange={handleInputChange}
+                step="0.0001"
+                min="0"
+                max="180"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">纬度 (°N) *</label>
+              <input
+                type="number"
+                name="latitude"
+                value={formData.latitude}
+                onChange={handleInputChange}
+                step="0.0001"
+                min="0"
+                max="90"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">水深 (m) *</label>
+              <input
+                type="number"
+                name="depth"
+                value={formData.depth}
+                onChange={handleInputChange}
+                min="0"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">水温 (°C) *</label>
+              <input
+                type="number"
+                name="waterTemp"
+                value={formData.waterTemp}
+                onChange={handleInputChange}
+                step="0.1"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">海况等级 *</label>
+              <select
+                name="seaState"
+                value={formData.seaState}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(level => (
+                  <option key={level} value={level}>{level}级</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">天气状况 *</label>
+            <select
+              name="weather"
+              value={formData.weather}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              required
+            >
+              <option value="晴">晴</option>
+              <option value="多云">多云</option>
+              <option value="阴">阴</option>
+              <option value="小雨">小雨</option>
+              <option value="中雨">中雨</option>
+              <option value="大雨">大雨</option>
+              <option value="雷阵雨">雷阵雨</option>
+              <option value="雾">雾</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">备注说明</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="记录渔场特点、渔获情况、注意事项等"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存记录
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

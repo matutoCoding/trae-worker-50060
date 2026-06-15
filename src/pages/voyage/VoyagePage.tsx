@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Anchor, Plus, Calendar, MapPin, User, Clock, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { Anchor, Plus, Calendar, MapPin, User, Clock, CheckCircle2, XCircle, Eye, Save } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatusBadge from '@/components/business/StatusBadge';
+import Modal from '@/components/business/Modal';
 import { useVoyageStore } from '@/store/useVoyageStore';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import type { Voyage } from '@/types';
 
 const statusMap: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' | 'info' }> = {
   planning: { label: '计划中', variant: 'default' },
@@ -16,8 +18,18 @@ const statusMap: Record<string, { label: string; variant: 'default' | 'success' 
 };
 
 export default function VoyagePage() {
-  const { voyageList, currentVoyage, setCurrentVoyage, updateVoyage } = useVoyageStore();
+  const { voyageList, currentVoyage, setCurrentVoyage, updateVoyage, addVoyage } = useVoyageStore();
   const [selectedVoyage, setSelectedVoyage] = useState(currentVoyage);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    voyageNo: '',
+    startDate: '',
+    endDate: '',
+    targetGround: '',
+    captain: '',
+    route: '',
+    plannedDays: 15,
+  });
 
   const columns = [
     {
@@ -127,6 +139,74 @@ export default function VoyagePage() {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'plannedDays' ? parseInt(value) || 0 : value,
+    }));
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const startDate = e.target.value;
+    setFormData(prev => {
+      const endDate = prev.endDate || startDate;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const plannedDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      return {
+        ...prev,
+        startDate,
+        plannedDays,
+      };
+    });
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const endDate = e.target.value;
+    setFormData(prev => {
+      const startDate = prev.startDate || endDate;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const plannedDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      return {
+        ...prev,
+        endDate,
+        plannedDays,
+      };
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newVoyage: Voyage = {
+      id: `v${Date.now()}`,
+      voyageNo: formData.voyageNo,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      targetGround: formData.targetGround,
+      captain: formData.captain,
+      route: formData.route,
+      plannedDays: formData.plannedDays,
+      status: 'planning',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    addVoyage(newVoyage);
+    setIsModalOpen(false);
+    setFormData({
+      voyageNo: '',
+      startDate: '',
+      endDate: '',
+      targetGround: '',
+      captain: '',
+      route: '',
+      plannedDays: 15,
+    });
+  };
+
   return (
     <div>
       <PageHeader
@@ -134,7 +214,10 @@ export default function VoyagePage() {
         subtitle="航次计划管理、审批与状态追踪"
         icon={Anchor}
         actions={
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-5 h-5" />
             新建航次
           </button>
@@ -260,6 +343,126 @@ export default function VoyagePage() {
           ))}
         </div>
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="新建航次计划"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">航次编号 *</label>
+              <input
+                type="text"
+                name="voyageNo"
+                value={formData.voyageNo}
+                onChange={handleInputChange}
+                placeholder="例如：HY-2026-004"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">船长 *</label>
+              <input
+                type="text"
+                name="captain"
+                value={formData.captain}
+                onChange={handleInputChange}
+                placeholder="请输入船长姓名"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">出发日期 *</label>
+              <input
+                type="date"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleStartDateChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">预计返航 *</label>
+              <input
+                type="date"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleEndDateChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">目标渔场 *</label>
+              <input
+                type="text"
+                name="targetGround"
+                value={formData.targetGround}
+                onChange={handleInputChange}
+                placeholder="例如：东海渔区123海区"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">计划天数</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  name="plannedDays"
+                  value={formData.plannedDays}
+                  onChange={handleInputChange}
+                  min="1"
+                  className="flex-1 px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                />
+                <span className="text-[#4A4A6A]">天</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">航行路线 *</label>
+            <textarea
+              name="route"
+              value={formData.route}
+              onChange={handleInputChange}
+              placeholder="例如：宁波港 -> 东海渔区 -> 舟山渔场 -> 宁波港"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存航次
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

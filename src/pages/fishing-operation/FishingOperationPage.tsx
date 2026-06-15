@@ -1,22 +1,36 @@
-import { useState } from 'react';
-import { Waves, Plus, Clock, Layers, Gauge, Users, Play, Square, CheckCircle2, Timer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Waves, Plus, Clock, Layers, Gauge, Users, Play, Square, CheckCircle2, Timer, Save } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatusBadge from '@/components/business/StatusBadge';
+import Modal from '@/components/business/Modal';
 import { useFishingStore } from '@/store/useFishingStore';
 import { useVoyageStore } from '@/store/useVoyageStore';
 import { useCrewStore } from '@/store/useCrewStore';
 import { format, differenceInMinutes } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { useEffect } from 'react';
+import type { FishingOperation } from '@/types';
 
 const netTypes = ['底拖网', '中层拖网', '表层拖网', '围网', '流刺网'];
 
 export default function FishingOperationPage() {
-  const { operations, currentOperation, updateOperation, grounds } = useFishingStore();
+  const { operations, currentOperation, updateOperation, grounds, addOperation } = useFishingStore();
   const { currentVoyage } = useVoyageStore();
   const { getCrewById } = useCrewStore();
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    netNumber: '',
+    operationType: '拖网',
+    startTime: '',
+    endTime: '',
+    duration: 0,
+    depth: 0,
+    location: '',
+    weather: '晴',
+    seaState: 0,
+    note: '',
+  });
 
   useEffect(() => {
     if (currentOperation?.status === 'in_progress') {
@@ -34,6 +48,51 @@ export default function FishingOperationPage() {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}小时${mins}分钟`;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: ['duration', 'depth', 'seaState'].includes(name) 
+        ? parseFloat(value) || 0 
+        : value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newOperation: FishingOperation = {
+      id: `op${Date.now()}`,
+      voyageId: currentVoyage?.id || 'v1',
+      groundId: grounds[0]?.id || 'fg1',
+      netNo: parseInt(formData.netNumber) || operations.length + 1,
+      startTime: new Date(formData.startTime).toISOString(),
+      endTime: new Date(formData.endTime).toISOString(),
+      trawlDepth: formData.depth,
+      trawlSpeed: 3,
+      netType: formData.operationType,
+      crewIds: [],
+      estimatedCatch: 0,
+      actualCatch: 0,
+      status: 'planned',
+    };
+
+    addOperation(newOperation);
+    setIsModalOpen(false);
+    setFormData({
+      netNumber: '',
+      operationType: '拖网',
+      startTime: '',
+      endTime: '',
+      duration: 0,
+      depth: 0,
+      location: '',
+      weather: '晴',
+      seaState: 0,
+      note: '',
+    });
   };
 
   const columns = [
@@ -153,7 +212,10 @@ export default function FishingOperationPage() {
         subtitle="网次作业登记、拖网时长与捕捞深度管理"
         icon={Waves}
         actions={
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-5 h-5" />
             新增作业
           </button>
@@ -324,6 +386,172 @@ export default function FishingOperationPage() {
           emptyMessage="暂无作业记录"
         />
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="新增作业登记"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">网次编号 *</label>
+              <input
+                type="text"
+                name="netNumber"
+                value={formData.netNumber}
+                onChange={handleInputChange}
+                placeholder="例如：1"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">作业类型 *</label>
+              <select
+                name="operationType"
+                value={formData.operationType}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                <option value="拖网">拖网</option>
+                <option value="围网">围网</option>
+                <option value="流刺网">流刺网</option>
+                <option value="延绳钓">延绳钓</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">开始时间 *</label>
+              <input
+                type="datetime-local"
+                name="startTime"
+                value={formData.startTime}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">结束时间 *</label>
+              <input
+                type="datetime-local"
+                name="endTime"
+                value={formData.endTime}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">拖网时长 (分钟)</label>
+              <input
+                type="number"
+                name="duration"
+                value={formData.duration}
+                onChange={handleInputChange}
+                min="0"
+                placeholder="例如：120"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">作业深度 (米)</label>
+              <input
+                type="number"
+                name="depth"
+                value={formData.depth}
+                onChange={handleInputChange}
+                min="0"
+                placeholder="例如：60"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">作业位置</label>
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
+              onChange={handleInputChange}
+              placeholder="例如：东海渔区A点"
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">天气</label>
+              <select
+                name="weather"
+                value={formData.weather}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              >
+                <option value="晴">晴</option>
+                <option value="多云">多云</option>
+                <option value="阴">阴</option>
+                <option value="小雨">小雨</option>
+                <option value="中雨">中雨</option>
+                <option value="大雨">大雨</option>
+                <option value="雷阵雨">雷阵雨</option>
+                <option value="雾">雾</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">海况 (0-9级)</label>
+              <select
+                name="seaState"
+                value={formData.seaState}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(level => (
+                  <option key={level} value={level}>{level}级</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">备注</label>
+            <textarea
+              name="note"
+              value={formData.note}
+              onChange={handleInputChange}
+              placeholder="记录作业特点、渔获情况、注意事项等"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存作业
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

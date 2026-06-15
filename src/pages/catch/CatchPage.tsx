@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Fish, Plus, Scale, Package, Star, TrendingUp, Search } from 'lucide-react';
+import { Fish, Plus, Scale, Package, Star, TrendingUp, Search, Save } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatCard from '@/components/business/StatCard';
+import Modal from '@/components/business/Modal';
 import { useFishingStore } from '@/store/useFishingStore';
 import { useVoyageStore } from '@/store/useVoyageStore';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import type { CatchRecord } from '@/types';
 
 const SPECIES_LIST = ['大黄鱼', '带鱼', '鱿鱼', '墨鱼', '小黄鱼', '金枪鱼', '鲅鱼', '鲳鱼', '鳗鱼', '石斑鱼'];
 const QUALITY_OPTIONS = [
@@ -23,11 +25,29 @@ const STORAGE_LOCATIONS = [
 
 const CHART_COLORS = ['#0A2463', '#3E92CC', '#44AF69', '#FF6B35', '#F9C80E', '#E63946', '#7C3AED', '#EC4899', '#06B6D4', '#84CC16'];
 
+const SPECIES_OPTIONS = ['带鱼', '黄鱼', '鲳鱼', '鱿鱼', '虾类', '蟹类', '其他'];
+const QUALITY_SELECT_OPTIONS = [
+  { value: 'A', label: 'A级' },
+  { value: 'B', label: 'B级' },
+  { value: 'C', label: 'C级' },
+];
+const STORAGE_OPTIONS = ['保鲜舱A', '保鲜舱B', '冷冻舱A', '冷冻舱B', '速冻舱'];
+
 export default function CatchPage() {
-  const { catchRecords, getCatchBySpecies, operations } = useFishingStore();
+  const { catchRecords, getCatchBySpecies, operations, addCatchRecord } = useFishingStore();
   const { currentVoyage } = useVoyageStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterQuality, setFilterQuality] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    operationId: '',
+    species: '',
+    weight: 0,
+    quality: 'A' as 'A' | 'B' | 'C',
+    storageLocation: '',
+    unitPrice: 0,
+    note: '',
+  });
 
   const catchBySpecies = getCatchBySpecies();
   const voyageCatch = currentVoyage
@@ -39,6 +59,46 @@ export default function CatchPage() {
     const matchesQuality = filterQuality === 'all' || c.quality === filterQuality;
     return matchesSearch && matchesQuality;
   });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'weight' || name === 'unitPrice' ? parseFloat(value) || 0 : value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!currentVoyage || !formData.operationId || !formData.species || !formData.weight || !formData.storageLocation) {
+      return;
+    }
+
+    const newCatchRecord: CatchRecord = {
+      id: `cr${Date.now()}`,
+      voyageId: currentVoyage.id,
+      operationId: formData.operationId,
+      species: formData.species,
+      weight: formData.weight,
+      quality: formData.quality,
+      storageLocation: formData.storageLocation,
+      unitPrice: formData.unitPrice,
+      recordTime: new Date().toISOString(),
+    };
+
+    addCatchRecord(newCatchRecord);
+    setIsModalOpen(false);
+    setFormData({
+      operationId: '',
+      species: '',
+      weight: 0,
+      quality: 'A',
+      storageLocation: '',
+      unitPrice: 0,
+      note: '',
+    });
+  };
 
   const totalWeight = voyageCatch.reduce((sum, c) => sum + c.weight, 0);
   const totalValue = voyageCatch.reduce((sum, c) => sum + c.weight * c.unitPrice, 0);
@@ -135,7 +195,10 @@ export default function CatchPage() {
         subtitle="渔获种类、重量统计与保鲜冷冻舱位分配"
         icon={Fish}
         actions={
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-5 h-5" />
             登记渔获
           </button>
@@ -318,6 +381,148 @@ export default function CatchPage() {
           );
         })}
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="新增渔获登记"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">关联网次 *</label>
+              <select
+                name="operationId"
+                value={formData.operationId}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                <option value="">请选择网次</option>
+                {currentVoyage && operations
+                  .filter(o => o.voyageId === currentVoyage.id)
+                  .map(op => (
+                    <option key={op.id} value={op.id}>
+                      第{op.netNo}网
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">渔获种类 *</label>
+              <select
+                name="species"
+                value={formData.species}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                <option value="">请选择种类</option>
+                {SPECIES_OPTIONS.map(species => (
+                  <option key={species} value={species}>
+                    {species}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">重量 (公斤) *</label>
+              <input
+                type="number"
+                name="weight"
+                value={formData.weight || ''}
+                onChange={handleInputChange}
+                placeholder="请输入重量"
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">质量等级</label>
+              <select
+                name="quality"
+                value={formData.quality}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              >
+                {QUALITY_SELECT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">存储位置 *</label>
+              <select
+                name="storageLocation"
+                value={formData.storageLocation}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+                required
+              >
+                <option value="">请选择存储位置</option>
+                {STORAGE_OPTIONS.map(loc => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A4A6A] mb-2">预估单价 (元/公斤)</label>
+              <input
+                type="number"
+                name="unitPrice"
+                value={formData.unitPrice || ''}
+                onChange={handleInputChange}
+                placeholder="请输入预估单价"
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#4A4A6A] mb-2">备注</label>
+            <textarea
+              name="note"
+              value={formData.note}
+              onChange={handleInputChange}
+              placeholder="请输入备注信息"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none transition-all resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-[#E8E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300"
+            >
+              <Save className="w-5 h-5" />
+              保存登记
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

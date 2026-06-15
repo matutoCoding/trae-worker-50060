@@ -12,6 +12,9 @@ export const mockFishingGrounds: FishingGround[] = [
     seaState: 2,
     waterTemp: 24.5,
     recordTime: '2026-06-10T06:00:00Z',
+    description: '带鱼主产区，渔获丰富',
+    createdAt: '2026-06-10T06:00:00Z',
+    updatedAt: '2026-06-10T06:00:00Z',
   },
   {
     id: 'g2',
@@ -24,6 +27,9 @@ export const mockFishingGrounds: FishingGround[] = [
     seaState: 3,
     waterTemp: 23.8,
     recordTime: '2026-06-12T08:00:00Z',
+    description: '大黄鱼作业区',
+    createdAt: '2026-06-12T08:00:00Z',
+    updatedAt: '2026-06-12T08:00:00Z',
   },
   {
     id: 'g3',
@@ -36,6 +42,9 @@ export const mockFishingGrounds: FishingGround[] = [
     seaState: 1,
     waterTemp: 25.2,
     recordTime: '2026-06-14T05:00:00Z',
+    description: '传统渔场，水质优良',
+    createdAt: '2026-06-14T05:00:00Z',
+    updatedAt: '2026-06-14T05:00:00Z',
   },
 ];
 

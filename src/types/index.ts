@@ -23,6 +23,9 @@ export interface FishingGround {
   seaState: number;
   waterTemp: number;
   recordTime: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FishingOperation {
@@ -94,6 +97,7 @@ export interface SafetyCheck {
   result: 'pass' | 'fail' | 'warning';
   issues: string;
   inspector: string;
+  remark: string;
 }
 
 export interface WeatherData {

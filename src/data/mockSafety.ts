@@ -9,6 +9,7 @@ export const mockSafetyChecks: SafetyCheck[] = [
     result: 'pass',
     issues: '无',
     inspector: '刘动力',
+    remark: '船舶主辅机、舵机、锚机等设备运行正常',
   },
   {
     id: 'sc2',
@@ -18,6 +19,7 @@ export const mockSafetyChecks: SafetyCheck[] = [
     result: 'pass',
     issues: '无',
     inspector: '陈导航',
+    remark: '救生艇、救生筏、救生圈、救生衣等设备齐全有效',
   },
   {
     id: 'sc3',
@@ -27,6 +29,7 @@ export const mockSafetyChecks: SafetyCheck[] = [
     result: 'pass',
     issues: '无',
     inspector: '陈导航',
+    remark: '消防泵、灭火器、消防水龙带等设备状态良好',
   },
   {
     id: 'sc4',
@@ -36,6 +39,7 @@ export const mockSafetyChecks: SafetyCheck[] = [
     result: 'warning',
     issues: '雷达显示屏轻微闪烁，建议返航后检修',
     inspector: '张海洋',
+    remark: '其他导航设备正常，雷达需关注',
   },
   {
     id: 'sc5',
@@ -45,6 +49,7 @@ export const mockSafetyChecks: SafetyCheck[] = [
     result: 'pass',
     issues: '无',
     inspector: '张海洋',
+    remark: '全体船员参加，强调航行安全和应急处置流程',
   },
 ];
 
