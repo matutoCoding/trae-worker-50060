@@ -33,7 +33,7 @@ const PLAN_TYPE_OPTIONS = [
 ];
 
 export default function SafetyPage() {
-  const { checks, emergencyPlans, getWarningCount, addCheck, updateEmergencyPlan } = useSafetyStore();
+  const { checks, emergencyPlans, getWarningCount, addCheck, addEmergencyPlan, updateEmergencyPlan } = useSafetyStore();
   const { currentVoyage } = useVoyageStore();
   const { weatherData } = useFishingStore();
   const [activeTab, setActiveTab] = useState<'checks' | 'emergency' | 'weather'>('checks');
@@ -157,14 +157,24 @@ export default function SafetyPage() {
     });
   };
 
-  const handleEditPlan = (plan: EmergencyPlan) => {
-    setEditingPlanId(plan.id);
-    setPlanFormData({
-      name: plan.name,
-      type: plan.type,
-      steps: [...plan.steps],
-      contacts: plan.contacts.map(c => ({ ...c })),
-    });
+  const handleEditPlan = (plan?: EmergencyPlan) => {
+    if (plan) {
+      setEditingPlanId(plan.id);
+      setPlanFormData({
+        name: plan.name,
+        type: plan.type,
+        steps: [...plan.steps],
+        contacts: plan.contacts.map(c => ({ ...c })),
+      });
+    } else {
+      setEditingPlanId(null);
+      setPlanFormData({
+        name: '',
+        type: 'man_overboard',
+        steps: [''],
+        contacts: [{ name: '', position: '', phone: '', radio: '' }],
+      });
+    }
     setIsPlanModalOpen(true);
   };
 
@@ -227,16 +237,28 @@ export default function SafetyPage() {
   const handlePlanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const filteredSteps = planFormData.steps.filter(s => s.trim() !== '');
+    const filteredContacts = planFormData.contacts.filter(c => c.name.trim() !== '');
+    
     if (editingPlanId) {
-      const filteredSteps = planFormData.steps.filter(s => s.trim() !== '');
-      const filteredContacts = planFormData.contacts.filter(c => c.name.trim() !== '');
-      
       updateEmergencyPlan(editingPlanId, {
         name: planFormData.name,
         type: planFormData.type,
         steps: filteredSteps,
         contacts: filteredContacts,
       });
+    } else {
+      const newPlan: EmergencyPlan = {
+        id: `ep${Date.now()}`,
+        voyageId: currentVoyage?.id || '',
+        name: planFormData.name,
+        type: planFormData.type,
+        steps: filteredSteps,
+        contacts: filteredContacts,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      addEmergencyPlan(newPlan);
     }
 
     setIsPlanModalOpen(false);
@@ -256,13 +278,22 @@ export default function SafetyPage() {
         subtitle="海况天气监测、安全检查与应急处置预案"
         icon={Shield}
         actions={
-          <button
-            onClick={() => setIsCheckModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
-          >
-            <Plus className="w-5 h-5" />
-            安全检查
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleEditPlan()}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#44AF69] to-[#2D7A4A] text-white rounded-xl font-medium shadow-lg shadow-[#44AF69]/30 hover:shadow-xl hover:shadow-[#44AF69]/40 transition-all duration-300 hover:-translate-y-0.5"
+            >
+              <Plus className="w-5 h-5" />
+              新增预案
+            </button>
+            <button
+              onClick={() => setIsCheckModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white rounded-xl font-medium shadow-lg shadow-[#3E92CC]/30 hover:shadow-xl hover:shadow-[#3E92CC]/40 transition-all duration-300 hover:-translate-y-0.5"
+            >
+              <Plus className="w-5 h-5" />
+              安全检查
+            </button>
+          </div>
         }
       />
 
@@ -705,7 +736,7 @@ export default function SafetyPage() {
       <Modal
         isOpen={isPlanModalOpen}
         onClose={() => setIsPlanModalOpen(false)}
-        title="编辑应急预案"
+        title={editingPlanId ? "编辑应急预案" : "新增应急预案"}
         className="max-w-3xl"
       >
         <form onSubmit={handlePlanSubmit} className="space-y-6">

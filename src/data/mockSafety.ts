@@ -56,6 +56,7 @@ export const mockSafetyChecks: SafetyCheck[] = [
 export const mockEmergencyPlans: EmergencyPlan[] = [
   {
     id: 'ep1',
+    voyageId: 'v1',
     type: 'man_overboard',
     name: '人员落水救生预案',
     steps: [
@@ -73,9 +74,12 @@ export const mockEmergencyPlans: EmergencyPlan[] = [
       { name: '刘动力', position: '轮机长', phone: '13800138003', radio: 'CH16' },
       { name: '海上救援中心', position: '救援', phone: '12395', radio: 'CH16' },
     ],
+    createdAt: '2024-01-15T08:00:00.000Z',
+    updatedAt: '2024-01-15T08:00:00.000Z',
   },
   {
     id: 'ep2',
+    voyageId: 'v1',
     type: 'fire',
     name: '火灾应急处置预案',
     steps: [
@@ -92,9 +96,12 @@ export const mockEmergencyPlans: EmergencyPlan[] = [
       { name: '刘动力', position: '轮机长', phone: '13800138003', radio: 'CH16' },
       { name: '海上救援中心', position: '救援', phone: '12395', radio: 'CH16' },
     ],
+    createdAt: '2024-01-15T08:00:00.000Z',
+    updatedAt: '2024-01-15T08:00:00.000Z',
   },
   {
     id: 'ep3',
+    voyageId: 'v1',
     type: 'ship_damage',
     name: '船舶破损进水预案',
     steps: [
@@ -112,5 +119,7 @@ export const mockEmergencyPlans: EmergencyPlan[] = [
       { name: '刘动力', position: '轮机长', phone: '13800138003', radio: 'CH16' },
       { name: '海上救援中心', position: '救援', phone: '12395', radio: 'CH16' },
     ],
+    createdAt: '2024-01-15T08:00:00.000Z',
+    updatedAt: '2024-01-15T08:00:00.000Z',
   },
 ];

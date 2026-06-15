@@ -24,7 +24,7 @@ const STATUS_VARIANTS = {
 };
 
 export default function CrewPage() {
-  const { crewList, schedules, getCurrentWatch, getSchedulesByDate, addCrew, addSchedule } = useCrewStore();
+  const { crewList, schedules, getSchedulesByDate, addCrew, addSchedule } = useCrewStore();
   const { currentVoyage } = useVoyageStore();
   const [activeTab, setActiveTab] = useState<'crew' | 'schedule'>('crew');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -48,8 +48,10 @@ export default function CrewPage() {
     status: 'scheduled' as const,
   });
 
-  const currentWatch = getCurrentWatch();
   const todaySchedules = getSchedulesByDate(selectedDate);
+  const currentWatch = todaySchedules.filter(s => 
+    s.status === 'on_duty' || (s.status === 'scheduled')
+  );
 
   const crewColumns = [
     {

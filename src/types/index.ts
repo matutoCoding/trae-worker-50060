@@ -42,6 +42,10 @@ export interface FishingOperation {
   estimatedCatch: number;
   actualCatch: number;
   status: 'planned' | 'in_progress' | 'completed';
+  location?: string;
+  weather?: string;
+  seaState?: number;
+  note?: string;
 }
 
 export interface CatchRecord {
@@ -114,10 +118,13 @@ export interface WeatherData {
 
 export interface EmergencyPlan {
   id: string;
+  voyageId: string;
   type: string;
   name: string;
   steps: string[];
   contacts: EmergencyContact[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface EmergencyContact {

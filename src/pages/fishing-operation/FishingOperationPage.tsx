@@ -77,6 +77,10 @@ export default function FishingOperationPage() {
       estimatedCatch: 0,
       actualCatch: 0,
       status: 'planned',
+      location: formData.location,
+      weather: formData.weather,
+      seaState: formData.seaState,
+      note: formData.note,
     };
 
     addOperation(newOperation);
@@ -117,6 +121,13 @@ export default function FishingOperationPage() {
       },
     },
     {
+      key: 'location',
+      header: '作业位置',
+      accessor: (row: any) => (
+        <span className="text-[#1A1A2E]">{row.location || '-'}</span>
+      ),
+    },
+    {
       key: 'netType',
       header: '网具类型',
       accessor: (row: any) => (
@@ -136,12 +147,18 @@ export default function FishingOperationPage() {
       ),
     },
     {
-      key: 'trawlSpeed',
-      header: '拖速(节)',
+      key: 'weather',
+      header: '天气/海况',
       accessor: (row: any) => (
-        <div className="flex items-center gap-1">
-          <Gauge className="w-4 h-4 text-[#FF6B35]" />
-          <span>{row.trawlSpeed}</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1 text-sm">
+            <CloudRain className="w-3.5 h-3.5 text-[#3E92CC]" />
+            <span>{row.weather || '-'}</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-[#4A4A6A]">
+            <Waves className="w-3 h-3 text-[#44AF69]" />
+            <span>{row.seaState !== undefined ? `${row.seaState}级` : '-'}</span>
+          </div>
         </div>
       ),
     },
@@ -161,6 +178,15 @@ export default function FishingOperationPage() {
       accessor: (row: any) => (
         <span className={row.status === 'completed' ? 'font-bold text-[#44AF69]' : 'text-[#4A4A6A]'}>
           {row.status === 'completed' ? row.actualCatch.toLocaleString() : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'note',
+      header: '备注',
+      accessor: (row: any) => (
+        <span className="max-w-[200px] truncate block text-[#4A4A6A] text-sm">
+          {row.note || '-'}
         </span>
       ),
     },
