@@ -1,0 +1,111 @@
+import type { SafetyCheck, EmergencyPlan } from '@/types';
+
+export const mockSafetyChecks: SafetyCheck[] = [
+  {
+    id: 'sc1',
+    voyageId: 'v1',
+    checkType: '船舶设备检查',
+    checkDate: '2026-06-01',
+    result: 'pass',
+    issues: '无',
+    inspector: '刘动力',
+  },
+  {
+    id: 'sc2',
+    voyageId: 'v1',
+    checkType: '救生设备检查',
+    checkDate: '2026-06-01',
+    result: 'pass',
+    issues: '无',
+    inspector: '陈导航',
+  },
+  {
+    id: 'sc3',
+    voyageId: 'v1',
+    checkType: '消防设备检查',
+    checkDate: '2026-06-01',
+    result: 'pass',
+    issues: '无',
+    inspector: '陈导航',
+  },
+  {
+    id: 'sc4',
+    voyageId: 'v1',
+    checkType: '航行设备检查',
+    checkDate: '2026-06-08',
+    result: 'warning',
+    issues: '雷达显示屏轻微闪烁，建议返航后检修',
+    inspector: '张海洋',
+  },
+  {
+    id: 'sc5',
+    voyageId: 'v1',
+    checkType: '安全例会',
+    checkDate: '2026-06-10',
+    result: 'pass',
+    issues: '无',
+    inspector: '张海洋',
+  },
+];
+
+export const mockEmergencyPlans: EmergencyPlan[] = [
+  {
+    id: 'ep1',
+    type: 'man_overboard',
+    name: '人员落水救生预案',
+    steps: [
+      '发现人员落水立即高呼"人员落水"并投掷救生圈',
+      '记下落水位置，立即停车，发出人落水警报（三长声）',
+      '向落水者一舷操满舵，防止螺旋桨伤人',
+      '船长上驾驶台指挥，大副组织放救生艇',
+      '保持落水者在视线内，夜间开启探照灯',
+      '救起人员后立即进行急救，拨打海上救援电话12395',
+      '记录事故详情，返航后提交事故报告',
+    ],
+    contacts: [
+      { name: '张海洋', position: '船长', phone: '13800138001', radio: 'CH16' },
+      { name: '陈导航', position: '大副', phone: '13800138004', radio: 'CH16' },
+      { name: '刘动力', position: '轮机长', phone: '13800138003', radio: 'CH16' },
+      { name: '海上救援中心', position: '救援', phone: '12395', radio: 'CH16' },
+    ],
+  },
+  {
+    id: 'ep2',
+    type: 'fire',
+    name: '火灾应急处置预案',
+    steps: [
+      '发现火情立即高呼"失火"，按下手动报警按钮',
+      '关闭失火区域门窗、通风，切断电源',
+      '使用就近灭火器材进行初期扑救',
+      '船长根据火情决定是否发出弃船警报',
+      '轮机长确保消防泵正常运行',
+      '如无法控制，组织人员穿好救生衣准备弃船',
+      '拨打海上救援电话12395',
+    ],
+    contacts: [
+      { name: '张海洋', position: '船长', phone: '13800138001', radio: 'CH16' },
+      { name: '刘动力', position: '轮机长', phone: '13800138003', radio: 'CH16' },
+      { name: '海上救援中心', position: '救援', phone: '12395', radio: 'CH16' },
+    ],
+  },
+  {
+    id: 'ep3',
+    type: 'ship_damage',
+    name: '船舶破损进水预案',
+    steps: [
+      '发现进水立即报告船长和轮机长',
+      '关闭水密门，评估进水位置和速度',
+      '使用排水泵排水，组织人员堵漏',
+      '调整压载水保持船舶平衡',
+      '如进水无法控制，发出弃船警报',
+      '发送遇险求救信号（MAYDAY）',
+      '组织人员有序登乘救生艇筏',
+    ],
+    contacts: [
+      { name: '张海洋', position: '船长', phone: '13800138001', radio: 'CH16' },
+      { name: '陈导航', position: '大副', phone: '13800138004', radio: 'CH16' },
+      { name: '刘动力', position: '轮机长', phone: '13800138003', radio: 'CH16' },
+      { name: '海上救援中心', position: '救援', phone: '12395', radio: 'CH16' },
+    ],
+  },
+];
