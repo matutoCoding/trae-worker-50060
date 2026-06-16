@@ -15,12 +15,18 @@ const netTypes = ['底拖网', '中层拖网', '表层拖网', '围网', '流刺
 
 export default function FishingOperationPage() {
   const { operations, currentOperation, updateOperation, grounds, addOperation, catchRecords } = useFishingStore();
-  const { currentVoyage } = useVoyageStore();
-  const { getCrewById } = useCrewStore();
+  const { currentVoyage, voyages } = useVoyageStore();
+  const { getCrewById, crewList } = useCrewStore();
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<FishingOperation | null>(null);
+  const [filters, setFilters] = useState({
+    voyageId: '',
+    groundId: '',
+    dateFrom: '',
+    dateTo: '',
+  });
   const [formData, setFormData] = useState({
     netNumber: '',
     operationType: '拖网',
@@ -33,6 +39,33 @@ export default function FishingOperationPage() {
     seaState: 0,
     note: '',
   });
+
+  const filteredOperations = operations.filter(op => {
+    if (filters.voyageId && op.voyageId !== filters.voyageId) return false;
+    if (filters.groundId && op.groundId !== filters.groundId) return false;
+    if (filters.dateFrom) {
+      const opDate = new Date(op.startTime);
+      const fromDate = new Date(filters.dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      if (opDate < fromDate) return false;
+    }
+    if (filters.dateTo) {
+      const opDate = new Date(op.startTime);
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (opDate > toDate) return false;
+    }
+    return true;
+  });
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({ voyageId: '', groundId: '', dateFrom: '', dateTo: '' });
+  };
 
   useEffect(() => {
     if (currentOperation?.status === 'in_progress') {

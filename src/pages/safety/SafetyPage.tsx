@@ -252,6 +252,7 @@ export default function SafetyPage() {
     addEmergencyPlan(newPlan);
     setSelectedPlan(newPlan.id);
     setPlanFilter('all');
+    setActiveTab('emergency');
   };
 
   const handlePlanSubmit = (e: React.FormEvent) => {
@@ -281,6 +282,7 @@ export default function SafetyPage() {
       addEmergencyPlan(newPlan);
       setSelectedPlan(newPlan.id);
       setPlanFilter('all');
+      setActiveTab('emergency');
     }
 
     setIsPlanModalOpen(false);

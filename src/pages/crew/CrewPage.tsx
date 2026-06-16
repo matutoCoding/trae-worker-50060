@@ -314,13 +314,66 @@ export default function CrewPage() {
 
       <div className="bg-white rounded-2xl shadow-lg shadow-black/5 p-6 border border-white/50 mb-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-[#1A1A2E] flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#3E92CC]" />
-            当前值更表
-          </h3>
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-bold text-[#1A1A2E] flex items-center gap-2">
+              <Clock className="w-5 h-5 text-[#3E92CC]" />
+              排班看板
+            </h3>
+            <div className="flex items-center gap-1 bg-[#F5F5FA] rounded-lg p-1">
+              <button
+                onClick={() => setCalendarView('week')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  calendarView === 'week'
+                    ? 'bg-white text-[#0A2463] shadow-sm'
+                    : 'text-[#4A4A6A] hover:text-[#1A1A2E]'
+                }`}
+              >
+                周视图
+              </button>
+              <button
+                onClick={() => setCalendarView('month')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  calendarView === 'month'
+                    ? 'bg-white text-[#0A2463] shadow-sm'
+                    : 'text-[#4A4A6A] hover:text-[#1A1A2E]'
+                }`}
+              >
+                月视图
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCalendarBaseDate(addDays(calendarBaseDate, calendarView === 'week' ? -7 : -30))}
+                className="p-2 rounded-lg hover:bg-[#F5F5FA] transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-[#4A4A6A]" />
+              </button>
+              <span className="text-sm font-medium text-[#1A1A2E] min-w-[150px] text-center">
+                {calendarView === 'week'
+                  ? `${format(addDays(calendarBaseDate, -3), 'MM月dd日', { locale: zhCN })} - ${format(addDays(calendarBaseDate, 3), 'MM月dd日', { locale: zhCN })}`
+                  : format(calendarBaseDate, 'yyyy年MM月', { locale: zhCN })
+                }
+              </span>
+              <button
+                onClick={() => setCalendarBaseDate(addDays(calendarBaseDate, calendarView === 'week' ? 7 : 30))}
+                className="p-2 rounded-lg hover:bg-[#F5F5FA] transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-[#4A4A6A]" />
+              </button>
+              <button
+                onClick={() => setCalendarBaseDate(new Date())}
+                className="px-3 py-1.5 text-sm text-[#3E92CC] hover:bg-[#3E92CC]/10 rounded-lg transition-colors"
+              >
+                今天
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsScheduleModalOpen(true)}
+              onClick={() => {
+                setScheduleFormData(prev => ({ ...prev, date: selectedDate }));
+                setIsScheduleModalOpen(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#44AF69] to-[#2D7A4A] text-white rounded-lg font-medium shadow-lg shadow-[#44AF69]/30 hover:shadow-xl hover:shadow-[#44AF69]/40 transition-all duration-300"
             >
               <Plus className="w-4 h-4" />
@@ -333,68 +386,208 @@ export default function CrewPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {(['day', 'night', 'standby'] as const).map((shift) => (
-            <div key={shift} className={`p-4 rounded-xl ${shift === 'day' ? 'bg-[#F9C80E]/10' : shift === 'night' ? 'bg-[#0A2463]/10' : 'bg-[#44AF69]/10'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`w-3 h-3 rounded-full ${SHIFT_COLORS[shift].bg}`}></span>
-                <span className="font-bold text-[#1A1A2E]">{SHIFT_COLORS[shift].label}</span>
-                <span className="text-sm text-[#4A4A6A] ml-auto">
-                  {shift === 'day' ? '06:00 - 18:00' : shift === 'night' ? '18:00 - 06:00' : '随时待命'}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {todaySchedules
-                  .filter(s => s.shiftType === shift)
-                  .map(schedule => {
-                    const crew = crewList.find(c => c.id === schedule.crewId);
-                    return (
-                      <div key={schedule.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#3E92CC] to-[#0A2463] flex items-center justify-center text-white text-sm font-bold">
-                            {crew?.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="font-medium text-sm">{crew?.name}</div>
-                            <div className="text-xs text-[#4A4A6A]">{crew?.position}</div>
-                          </div>
-                        </div>
-                        <StatusBadge 
-                          status={STATUS_VARIANTS[schedule.status].label} 
-                          variant={STATUS_VARIANTS[schedule.status].variant}
-                          size="sm"
-                        />
-                      </div>
-                    );
-                  })}
-              </div>
+        {calendarView === 'week' && (
+          <div className="mb-6">
+            <div className="grid grid-cols-8 gap-2 mb-2">
+              <div className="p-2 text-center text-sm font-medium text-[#4A4A6A]">班次</div>
+              {weekDays.map((date) => {
+                const isSelected = date === selectedDate;
+                const isTodayDate = isToday(new Date(date));
+                return (
+                  <button
+                    key={date}
+                    onClick={() => setSelectedDate(date)}
+                    className={`p-2 text-center rounded-lg transition-all ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white'
+                        : isTodayDate
+                        ? 'bg-[#3E92CC]/10 text-[#0A2463]'
+                        : 'hover:bg-[#F5F5FA] text-[#1A1A2E]'
+                    }`}
+                  >
+                    <div className="text-sm font-medium">
+                      {format(new Date(date), 'MM/dd', { locale: zhCN })}
+                    </div>
+                    <div className="text-xs opacity-80">
+                      {format(new Date(date), 'EEE', { locale: zhCN })}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {weekDays.map((date) => {
-            const daySchedules = getSchedulesByDate(date);
-            const isSelected = date === selectedDate;
-            return (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`flex-shrink-0 px-4 py-3 rounded-xl transition-all ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white shadow-lg'
-                    : 'bg-[#F5F5FA] hover:bg-[#E8E8F0] text-[#1A1A2E]'
-                }`}
-              >
-                <div className="text-sm font-medium">
-                  {format(new Date(date), 'MM月dd日', { locale: zhCN })}
+            {(['day', 'night', 'standby'] as const).map((shift) => (
+              <div key={shift} className="grid grid-cols-8 gap-2 mb-2">
+                <div className={`p-3 rounded-lg ${SHIFT_COLORS[shift].bg} text-white flex items-center justify-between`}>
+                  <span className="font-medium text-sm">{SHIFT_COLORS[shift].label}</span>
+                  <span className="text-xs opacity-80">
+                    {shift === 'day' ? '06-18' : shift === 'night' ? '18-06' : '待命'}
+                  </span>
                 </div>
-                <div className="text-xs opacity-80">
-                  {format(new Date(date), 'EEEE', { locale: zhCN })} · {daySchedules.length}个排班
+                {weekDays.map((date) => {
+                  const daySchedules = getSchedulesByDate(date).filter(s => s.shiftType === shift);
+                  const isSelected = date === selectedDate;
+                  return (
+                    <div
+                      key={`${date}-${shift}`}
+                      onClick={() => {
+                        setSelectedDate(date);
+                        setScheduleFormData(prev => ({ ...prev, date, shiftType: shift }));
+                        setIsScheduleModalOpen(true);
+                      }}
+                      className={`p-2 rounded-lg min-h-[80px] cursor-pointer transition-all ${
+                        isSelected ? 'bg-[#3E92CC]/5 ring-1 ring-[#3E92CC]' : 'bg-[#F5F5FA]/50 hover:bg-[#F5F5FA]'
+                      }`}
+                    >
+                      {daySchedules.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-xs text-[#4A4A6A]/50">
+                          点击添加
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {daySchedules.map(schedule => {
+                            const crew = crewList.find(c => c.id === schedule.crewId);
+                            return (
+                              <div
+                                key={schedule.id}
+                                className={`p-1.5 rounded text-xs font-medium text-white ${SHIFT_COLORS[shift].bg} flex items-center gap-1`}
+                              >
+                                <span className="w-5 h-5 rounded bg-white/20 flex items-center justify-center text-[10px]">
+                                  {crew?.name.charAt(0)}
+                                </span>
+                                <span className="truncate">{crew?.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {calendarView === 'month' && (
+          <div className="mb-6">
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['周日', '周一', '周二', '周三', '周四', '周五', '周六'].map((day, i) => (
+                <div key={day} className="p-2 text-center text-xs font-medium text-[#4A4A6A]">
+                  {day}
                 </div>
-              </button>
-            );
-          })}
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {(() => {
+                const firstDay = monthDays[0].getDay();
+                const prefixDays = Array(firstDay).fill(null);
+                return [...prefixDays, ...monthDays].map((date, idx) => {
+                  if (!date) return <div key={`empty-${idx}`} className="min-h-[100px]" />;
+                  
+                  const dateStr = format(date, 'yyyy-MM-dd');
+                  const daySchedules = getSchedulesByDate(dateStr);
+                  const isSelected = dateStr === selectedDate;
+                  const isTodayDate = isToday(date);
+                  const inMonth = isSameMonth(date, calendarBaseDate);
+                  
+                  return (
+                    <div
+                      key={dateStr}
+                      onClick={() => {
+                        setSelectedDate(dateStr);
+                        setScheduleFormData(prev => ({ ...prev, date: dateStr }));
+                        setIsScheduleModalOpen(true);
+                      }}
+                      className={`min-h-[100px] p-2 rounded-lg cursor-pointer transition-all ${
+                        !inMonth ? 'opacity-30' : ''
+                      } ${
+                        isSelected
+                          ? 'bg-[#3E92CC]/10 ring-2 ring-[#3E92CC]'
+                          : isTodayDate
+                          ? 'bg-[#3E92CC]/5'
+                          : 'hover:bg-[#F5F5FA]'
+                      }`}
+                    >
+                      <div className={`text-sm font-medium mb-1 ${
+                        isTodayDate ? 'text-[#3E92CC]' : 'text-[#1A1A2E]'
+                      }`}>
+                        {format(date, 'd')}
+                      </div>
+                      <div className="space-y-1">
+                        {daySchedules.slice(0, 3).map(schedule => {
+                          const crew = crewList.find(c => c.id === schedule.crewId);
+                          return (
+                            <div
+                              key={schedule.id}
+                              className={`text-[10px] px-1.5 py-0.5 rounded text-white truncate ${SHIFT_COLORS[schedule.shiftType].bg}`}
+                              title={`${crew?.name} - ${SHIFT_COLORS[schedule.shiftType].label}`}
+                            >
+                              {crew?.name}
+                            </div>
+                          );
+                        })}
+                        {daySchedules.length > 3 && (
+                          <div className="text-[10px] text-[#4A4A6A]">
+                            +{daySchedules.length - 3} 更多
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
+
+        <div className="border-t border-[#E8E8F0] pt-4">
+          <h4 className="text-sm font-bold text-[#1A1A2E] mb-3">
+            {format(new Date(selectedDate), 'MM月dd日 EEEE', { locale: zhCN })} 值班详情
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(['day', 'night', 'standby'] as const).map((shift) => (
+              <div key={shift} className={`p-4 rounded-xl ${shift === 'day' ? 'bg-[#F9C80E]/10' : shift === 'night' ? 'bg-[#0A2463]/10' : 'bg-[#44AF69]/10'}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`w-3 h-3 rounded-full ${SHIFT_COLORS[shift].bg}`}></span>
+                  <span className="font-bold text-[#1A1A2E]">{SHIFT_COLORS[shift].label}</span>
+                  <span className="text-sm text-[#4A4A6A] ml-auto">
+                    {shift === 'day' ? '06:00 - 18:00' : shift === 'night' ? '18:00 - 06:00' : '随时待命'}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {todaySchedules
+                    .filter(s => s.shiftType === shift)
+                    .map(schedule => {
+                      const crew = crewList.find(c => c.id === schedule.crewId);
+                      return (
+                        <div key={schedule.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#3E92CC] to-[#0A2463] flex items-center justify-center text-white text-sm font-bold">
+                              {crew?.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">{crew?.name}</div>
+                              <div className="text-xs text-[#4A4A6A]">{crew?.position}</div>
+                            </div>
+                          </div>
+                          <StatusBadge 
+                            status={STATUS_VARIANTS[schedule.status].label} 
+                            variant={STATUS_VARIANTS[schedule.status].variant}
+                            size="sm"
+                          />
+                        </div>
+                      );
+                    })}
+                  {todaySchedules.filter(s => s.shiftType === shift).length === 0 && (
+                    <div className="text-sm text-[#4A4A6A]/50 text-center py-2">
+                      暂无排班
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -556,11 +749,24 @@ export default function CrewPage() {
 
       <Modal
         isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          setScheduleError('');
+        }}
         title="新增排班"
         className="max-w-2xl"
       >
         <form onSubmit={handleScheduleSubmit} className="space-y-6">
+          {scheduleError && (
+            <div className="p-4 bg-[#FF6B35]/10 border border-[#FF6B35]/30 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-[#FF6B35] flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-medium text-[#FF6B35] mb-1">排班冲突</div>
+                <div className="text-sm text-[#1A1A2E]">{scheduleError}</div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-[#4A4A6A] mb-2">选择船员 *</label>
@@ -572,11 +778,20 @@ export default function CrewPage() {
                 required
               >
                 <option value="">请选择船员</option>
-                {crewList.map(crew => (
-                  <option key={crew.id} value={crew.id}>
-                    {crew.name} - {crew.position}
-                  </option>
-                ))}
+                {crewList.map(crew => {
+                  const hasExistingShift = existingSchedulesForDate.some(s => s.crewId === crew.id);
+                  const existingShift = existingSchedulesForDate.find(s => s.crewId === crew.id);
+                  return (
+                    <option 
+                      key={crew.id} 
+                      value={crew.id}
+                      disabled={hasExistingShift}
+                    >
+                      {crew.name} - {crew.position}
+                      {hasExistingShift ? ` (已有${SHIFT_COLORS[existingShift!.shiftType].label})` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div>
@@ -590,6 +805,51 @@ export default function CrewPage() {
                 required
               />
             </div>
+          </div>
+
+          <div className="bg-[#F5F5FA] rounded-xl p-4">
+            <div className="text-sm font-medium text-[#4A4A6A] mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              {format(new Date(scheduleFormData.date), 'yyyy年MM月dd日 EEEE', { locale: zhCN })} 已有排班
+            </div>
+            {existingSchedulesForDate.length === 0 ? (
+              <div className="text-sm text-[#4A4A6A]/50 text-center py-2">
+                该日期暂无排班
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {(['day', 'night', 'standby'] as const).map((shift) => {
+                  const shiftSchedules = existingSchedulesForDate.filter(s => s.shiftType === shift);
+                  return (
+                    <div key={shift} className="bg-white rounded-lg p-3">
+                      <div className={`text-xs font-medium mb-2 flex items-center gap-1 ${
+                        shift === 'day' ? 'text-[#D4A80B]' : shift === 'night' ? 'text-[#0A2463]' : 'text-[#2D7A4A]'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${SHIFT_COLORS[shift].bg}`}></span>
+                        {SHIFT_COLORS[shift].label} ({shiftSchedules.length})
+                      </div>
+                      <div className="space-y-1">
+                        {shiftSchedules.length === 0 ? (
+                          <div className="text-xs text-[#4A4A6A]/40">暂无</div>
+                        ) : (
+                          shiftSchedules.map(s => {
+                            const crew = crewList.find(c => c.id === s.crewId);
+                            return (
+                              <div key={s.id} className="text-xs text-[#1A1A2E] flex items-center gap-1">
+                                <span className="w-4 h-4 rounded bg-gradient-to-br from-[#3E92CC] to-[#0A2463] flex items-center justify-center text-white text-[9px]">
+                                  {crew?.name.charAt(0)}
+                                </span>
+                                <span className="truncate">{crew?.name}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div>
