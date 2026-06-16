@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Plus, AlertTriangle, CheckCircle, Phone, Radio, Wind, Waves, CloudRain, Thermometer, Eye, ChevronRight, LifeBuoy, Flame, Ship, Save, Trash2, Edit } from 'lucide-react';
+import { Shield, Plus, AlertTriangle, CheckCircle, Phone, Radio, Wind, Waves, CloudRain, Thermometer, Eye, ChevronRight, LifeBuoy, Flame, Ship, Save, Trash2, Edit, Copy, Filter } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatCard from '@/components/business/StatCard';
@@ -37,7 +37,8 @@ export default function SafetyPage() {
   const { currentVoyage } = useVoyageStore();
   const { weatherData } = useFishingStore();
   const [activeTab, setActiveTab] = useState<'checks' | 'emergency' | 'weather'>('checks');
-  const [selectedPlan, setSelectedPlan] = useState<string | null>('man_overboard');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>('ep1');
+  const [planFilter, setPlanFilter] = useState<string>('all');
   
   const [isCheckModalOpen, setIsCheckModalOpen] = useState(false);
   const [checkFormData, setCheckFormData] = useState({
@@ -61,7 +62,10 @@ export default function SafetyPage() {
   const warningCount = currentVoyage ? getWarningCount(currentVoyage.id) : 0;
   const voyageChecks = currentVoyage ? checks.filter(c => c.voyageId === currentVoyage.id) : checks;
   const currentWeather = weatherData[weatherData.length - 1];
-  const selectedPlanData = emergencyPlans.find(p => p.type === selectedPlan);
+  const filteredPlans = planFilter === 'all'
+    ? emergencyPlans
+    : emergencyPlans.filter(p => p.type === planFilter);
+  const selectedPlanData = emergencyPlans.find(p => p.id === selectedPlan);
 
   const checkColumns = [
     {
@@ -234,6 +238,22 @@ export default function SafetyPage() {
     }
   };
 
+  const handleCopyPlan = (plan: EmergencyPlan) => {
+    const newPlan: EmergencyPlan = {
+      id: `ep${Date.now()}`,
+      voyageId: currentVoyage?.id || plan.voyageId,
+      name: `${plan.name} (副本)`,
+      type: plan.type,
+      steps: [...plan.steps],
+      contacts: plan.contacts.map(c => ({ ...c })),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    addEmergencyPlan(newPlan);
+    setSelectedPlan(newPlan.id);
+    setPlanFilter('all');
+  };
+
   const handlePlanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -259,6 +279,8 @@ export default function SafetyPage() {
         updatedAt: new Date().toISOString(),
       };
       addEmergencyPlan(newPlan);
+      setSelectedPlan(newPlan.id);
+      setPlanFilter('all');
     }
 
     setIsPlanModalOpen(false);
@@ -447,54 +469,93 @@ export default function SafetyPage() {
           {activeTab === 'emergency' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="space-y-3">
-                {emergencyPlans.map((plan) => {
-                  const Icon = PLAN_ICONS[plan.type as keyof typeof PLAN_ICONS] || Shield;
-                  const isSelected = selectedPlan === plan.type;
-                  return (
-                    <div
-                      key={plan.id}
-                      className={`w-full p-4 rounded-xl transition-all ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white shadow-lg'
-                          : 'bg-[#F5F5FA] hover:bg-[#E8E8F0]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => setSelectedPlan(plan.type)}
-                          className="flex-1 flex items-center gap-3 text-left"
-                        >
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            isSelected ? 'bg-white/20' : 'bg-gradient-to-br from-[#3E92CC] to-[#0A2463]'
-                          }`}>
-                            <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-white'}`} />
-                          </div>
-                          <div>
-                            <div className={`font-bold ${isSelected ? 'text-white' : 'text-[#1A1A2E]'}`}>
-                              {plan.name}
+                <div className="flex items-center gap-2 mb-4">
+                  <Filter className="w-4 h-4 text-[#4A4A6A]" />
+                  <span className="text-sm font-medium text-[#4A4A6A]">按类型筛选：</span>
+                  <select
+                    value={planFilter}
+                    onChange={(e) => setPlanFilter(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-lg border border-[#E8E8F0] text-sm focus:border-[#3E92CC] focus:ring-2 focus:ring-[#3E92CC]/20 outline-none"
+                  >
+                    <option value="all">全部类型</option>
+                    {PLAN_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {filteredPlans.length === 0 ? (
+                  <div className="p-8 bg-[#F5F5FA] rounded-xl text-center text-[#4A4A6A]">
+                    暂无该类型预案
+                  </div>
+                ) : (
+                  filteredPlans.map((plan) => {
+                    const Icon = PLAN_ICONS[plan.type as keyof typeof PLAN_ICONS] || Shield;
+                    const isSelected = selectedPlan === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`w-full p-4 rounded-xl transition-all ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-[#3E92CC] to-[#0A2463] text-white shadow-lg'
+                            : 'bg-[#F5F5FA] hover:bg-[#E8E8F0]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => setSelectedPlan(plan.id)}
+                            className="flex-1 flex items-center gap-3 text-left"
+                          >
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                              isSelected ? 'bg-white/20' : 'bg-gradient-to-br from-[#3E92CC] to-[#0A2463]'
+                            }`}>
+                              <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-white'}`} />
                             </div>
-                            <div className={`text-sm ${isSelected ? 'text-white/80' : 'text-[#4A4A6A]'}`}>
-                              {plan.steps.length} 个处置步骤
+                            <div>
+                              <div className={`font-bold ${isSelected ? 'text-white' : 'text-[#1A1A2E]'}`}>
+                                {plan.name}
+                              </div>
+                              <div className={`text-sm ${isSelected ? 'text-white/80' : 'text-[#4A4A6A]'}`}>
+                                {PLAN_TYPE_OPTIONS.find(o => o.value === plan.type)?.label} · {plan.steps.length} 个处置步骤
+                              </div>
                             </div>
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyPlan(plan);
+                              }}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isSelected
+                                  ? 'hover:bg-white/20 text-white'
+                                  : 'hover:bg-[#E8E8F0] text-[#4A4A6A]'
+                              }`}
+                              title="复制预案"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditPlan(plan);
+                              }}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isSelected
+                                  ? 'hover:bg-white/20 text-white'
+                                  : 'hover:bg-[#E8E8F0] text-[#4A4A6A]'
+                              }`}
+                              title="编辑预案"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
                           </div>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditPlan(plan);
-                          }}
-                          className={`p-2 rounded-lg transition-colors ${
-                            isSelected
-                              ? 'hover:bg-white/20 text-white'
-                              : 'hover:bg-[#E8E8F0] text-[#4A4A6A]'
-                          }`}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
               <div className="lg:col-span-2 bg-[#F5F5FA] rounded-xl p-6">

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Users, Plus, Calendar, Clock, Phone, Award, UserCheck, UserX, ChevronRight, Save } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Users, Plus, Calendar, Clock, Phone, Award, UserCheck, UserX, ChevronRight, Save, ChevronLeft, AlertCircle } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatCard from '@/components/business/StatCard';
@@ -7,7 +7,7 @@ import StatusBadge from '@/components/business/StatusBadge';
 import Modal from '@/components/business/Modal';
 import { useCrewStore } from '@/store/useCrewStore';
 import { useVoyageStore } from '@/store/useVoyageStore';
-import { format } from 'date-fns';
+import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import type { Crew, CrewSchedule } from '@/types';
 
@@ -28,6 +28,8 @@ export default function CrewPage() {
   const { currentVoyage } = useVoyageStore();
   const [activeTab, setActiveTab] = useState<'crew' | 'schedule'>('crew');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
+  const [calendarBaseDate, setCalendarBaseDate] = useState(new Date());
 
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
   const [crewFormData, setCrewFormData] = useState({
@@ -47,11 +49,28 @@ export default function CrewPage() {
     duties: '',
     status: 'scheduled' as const,
   });
+  const [scheduleError, setScheduleError] = useState('');
 
   const todaySchedules = getSchedulesByDate(selectedDate);
   const currentWatch = todaySchedules.filter(s => 
     s.status === 'on_duty' || (s.status === 'scheduled')
   );
+
+  const existingSchedulesForDate = useMemo(() => {
+    if (!scheduleFormData.date) return [];
+    return getSchedulesByDate(scheduleFormData.date);
+  }, [scheduleFormData.date, schedules, getSchedulesByDate]);
+
+  const weekDays = useMemo(() => {
+    const start = addDays(calendarBaseDate, -3);
+    return Array.from({ length: 7 }, (_, i) => format(addDays(start, i), 'yyyy-MM-dd'));
+  }, [calendarBaseDate]);
+
+  const monthDays = useMemo(() => {
+    const start = startOfMonth(calendarBaseDate);
+    const end = endOfMonth(calendarBaseDate);
+    return eachDayOfInterval({ start, end });
+  }, [calendarBaseDate]);
 
   const crewColumns = [
     {
@@ -168,12 +187,6 @@ export default function CrewPage() {
     },
   ];
 
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - 3 + i);
-    return format(date, 'yyyy-MM-dd');
-  });
-
   const handleCrewInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setCrewFormData(prev => ({
@@ -213,10 +226,21 @@ export default function CrewPage() {
       ...prev,
       [name]: value,
     }));
+    setScheduleError('');
   };
 
   const handleScheduleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const duplicateSchedule = existingSchedulesForDate.find(
+      s => s.crewId === scheduleFormData.crewId
+    );
+
+    if (duplicateSchedule) {
+      const crew = crewList.find(c => c.id === scheduleFormData.crewId);
+      setScheduleError(`${crew?.name || '该船员'} 已在 ${scheduleFormData.date} 安排了 ${SHIFT_COLORS[duplicateSchedule.shiftType].label}，请勿重复排班`);
+      return;
+    }
 
     const newSchedule: CrewSchedule = {
       id: `s${Date.now()}`,
@@ -230,6 +254,7 @@ export default function CrewPage() {
 
     addSchedule(newSchedule);
     setIsScheduleModalOpen(false);
+    setScheduleError('');
     setScheduleFormData({
       crewId: '',
       date: format(new Date(), 'yyyy-MM-dd'),

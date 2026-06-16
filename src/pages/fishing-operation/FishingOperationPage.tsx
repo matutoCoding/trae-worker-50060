@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Waves, Plus, Clock, Layers, Gauge, Users, Play, Square, CheckCircle2, Timer, Save } from 'lucide-react';
+import { Waves, Plus, Clock, Layers, Gauge, Users, Play, Square, CheckCircle2, Timer, Save, CloudRain, X, Eye, ChevronRight, Anchor } from 'lucide-react';
 import PageHeader from '@/components/business/PageHeader';
 import DataTable from '@/components/business/DataTable';
 import StatusBadge from '@/components/business/StatusBadge';
@@ -14,11 +14,13 @@ import type { FishingOperation } from '@/types';
 const netTypes = ['底拖网', '中层拖网', '表层拖网', '围网', '流刺网'];
 
 export default function FishingOperationPage() {
-  const { operations, currentOperation, updateOperation, grounds, addOperation } = useFishingStore();
+  const { operations, currentOperation, updateOperation, grounds, addOperation, catchRecords } = useFishingStore();
   const { currentVoyage } = useVoyageStore();
   const { getCrewById } = useCrewStore();
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedOperation, setSelectedOperation] = useState<FishingOperation | null>(null);
   const [formData, setFormData] = useState({
     netNumber: '',
     operationType: '拖网',
@@ -204,6 +206,22 @@ export default function FishingOperationPage() {
             row.status === 'in_progress' ? 'info' : 'default'
           }
         />
+      ),
+    },
+    {
+      key: 'action',
+      header: '操作',
+      accessor: (row: any) => (
+        <button 
+          onClick={() => {
+            setSelectedOperation(row);
+            setIsDetailModalOpen(true);
+          }}
+          className="text-[#3E92CC] hover:text-[#0A2463] font-medium flex items-center gap-1"
+        >
+          <Eye className="w-4 h-4" />
+          查看详情
+        </button>
       ),
     },
   ];
@@ -577,6 +595,201 @@ export default function FishingOperationPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title={selectedOperation ? `第${selectedOperation.netNo}网作业详情` : '作业详情'}
+        className="max-w-4xl"
+      >
+        {selectedOperation && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm text-[#4A4A6A] mb-1">作业网次</div>
+                <div className="text-xl font-bold text-[#1A1A2E]">第{selectedOperation.netNo}网</div>
+              </div>
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm text-[#4A4A6A] mb-1">作业状态</div>
+                <StatusBadge
+                  status={
+                    selectedOperation.status === 'completed' ? '已完成' :
+                    selectedOperation.status === 'in_progress' ? '进行中' : '计划中'
+                  }
+                  variant={
+                    selectedOperation.status === 'completed' ? 'success' :
+                    selectedOperation.status === 'in_progress' ? 'info' : 'default'
+                  }
+                />
+              </div>
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm text-[#4A4A6A] mb-1">关联网次</div>
+                <div className="font-medium text-[#1A1A2E]">{selectedOperation.netType}</div>
+              </div>
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm text-[#4A4A6A] mb-1">关联渔场</div>
+                <div className="font-medium text-[#1A1A2E]">
+                  {grounds.find(g => g.id === selectedOperation.groundId)?.name || '-'}
+                </div>
+              </div>
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm text-[#4A4A6A] mb-1">作业位置</div>
+                <div className="font-medium text-[#1A1A2E] flex items-center gap-1">
+                  <Anchor className="w-4 h-4 text-[#3E92CC]" />
+                  {selectedOperation.location || '-'}
+                </div>
+              </div>
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm text-[#4A4A6A] mb-1">拖网深度</div>
+                <div className="font-medium text-[#1A1A2E]">{selectedOperation.trawlDepth} 米</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-[#0A2463]/5 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4 text-[#3E92CC]" />
+                  <span className="text-sm font-medium text-[#4A4A6A]">开始时间</span>
+                </div>
+                <div className="text-lg font-bold text-[#1A1A2E]">
+                  {format(new Date(selectedOperation.startTime), 'yyyy-MM-dd HH:mm', { locale: zhCN })}
+                </div>
+              </div>
+              <div className="bg-[#0A2463]/5 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4 text-[#FF6B35]" />
+                  <span className="text-sm font-medium text-[#4A4A6A]">结束时间</span>
+                </div>
+                <div className="text-lg font-bold text-[#1A1A2E]">
+                  {selectedOperation.endTime
+                    ? format(new Date(selectedOperation.endTime), 'yyyy-MM-dd HH:mm', { locale: zhCN })
+                    : '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#F9C80E]/10 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CloudRain className="w-4 h-4 text-[#F9C80E]" />
+                  <span className="text-sm font-medium text-[#4A4A6A]">天气状况</span>
+                </div>
+                <div className="text-lg font-bold text-[#1A1A2E]">{selectedOperation.weather || '-'}</div>
+              </div>
+              <div className="bg-[#44AF69]/10 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Waves className="w-4 h-4 text-[#44AF69]" />
+                  <span className="text-sm font-medium text-[#4A4A6A]">海况等级</span>
+                </div>
+                <div className="text-lg font-bold text-[#1A1A2E]">
+                  {selectedOperation.seaState !== undefined ? `${selectedOperation.seaState} 级` : '-'}
+                </div>
+              </div>
+              <div className="bg-[#3E92CC]/10 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Timer className="w-4 h-4 text-[#3E92CC]" />
+                  <span className="text-sm font-medium text-[#4A4A6A]">作业时长</span>
+                </div>
+                <div className="text-lg font-bold text-[#1A1A2E]">
+                  {selectedOperation.endTime
+                    ? formatDuration(differenceInMinutes(new Date(selectedOperation.endTime), new Date(selectedOperation.startTime)))
+                    : '-'}
+                </div>
+              </div>
+            </div>
+
+            {selectedOperation.note && (
+              <div className="bg-[#F5F5FA] rounded-xl p-4">
+                <div className="text-sm font-medium text-[#4A4A6A] mb-2">备注信息</div>
+                <div className="text-[#1A1A2E] whitespace-pre-wrap">{selectedOperation.note}</div>
+              </div>
+            )}
+
+            <div className="border-t border-[#E8E8F0] pt-4">
+              <h4 className="text-lg font-bold text-[#1A1A2E] mb-4 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[#3E92CC]" />
+                渔获汇总
+              </h4>
+              {(() => {
+                const opCatchRecords = catchRecords.filter(r => r.operationId === selectedOperation.id);
+                if (opCatchRecords.length === 0) {
+                  return (
+                    <div className="bg-[#F5F5FA] rounded-xl p-8 text-center text-[#4A4A6A]">
+                      暂无渔获登记记录
+                    </div>
+                  );
+                }
+                const totalWeight = opCatchRecords.reduce((sum, r) => sum + r.weight, 0);
+                const totalValue = opCatchRecords.reduce((sum, r) => sum + r.weight * r.unitPrice, 0);
+                const speciesMap = new Map<string, number>();
+                opCatchRecords.forEach(r => {
+                  const current = speciesMap.get(r.species) || 0;
+                  speciesMap.set(r.species, current + r.weight);
+                });
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-[#3E92CC]/10 rounded-xl p-4">
+                        <div className="text-sm text-[#4A4A6A] mb-1">登记条数</div>
+                        <div className="text-xl font-bold text-[#1A1A2E]">{opCatchRecords.length} 条</div>
+                      </div>
+                      <div className="bg-[#44AF69]/10 rounded-xl p-4">
+                        <div className="text-sm text-[#4A4A6A] mb-1">总重量</div>
+                        <div className="text-xl font-bold text-[#1A1A2E]">{totalWeight.toLocaleString()} kg</div>
+                      </div>
+                      <div className="bg-[#F9C80E]/10 rounded-xl p-4">
+                        <div className="text-sm text-[#4A4A6A] mb-1">预估产值</div>
+                        <div className="text-xl font-bold text-[#1A1A2E]">¥ {totalValue.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-[#FF6B35]/10 rounded-xl p-4">
+                        <div className="text-sm text-[#4A4A6A] mb-1">种类数量</div>
+                        <div className="text-xl font-bold text-[#1A1A2E]">{speciesMap.size} 种</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#F5F5FA] rounded-xl overflow-hidden">
+                      <div className="grid grid-cols-5 p-3 bg-[#E8E8F0] text-sm font-medium text-[#4A4A6A]">
+                        <div>种类</div>
+                        <div className="text-right">重量(kg)</div>
+                        <div className="text-right">质量等级</div>
+                        <div className="text-right">存储位置</div>
+                        <div className="text-right">预估金额</div>
+                      </div>
+                      {opCatchRecords.map((record) => (
+                        <div key={record.id} className="grid grid-cols-5 p-3 border-t border-[#E8E8F0] text-sm">
+                          <div className="font-medium text-[#1A1A2E]">{record.species}</div>
+                          <div className="text-right">{record.weight.toLocaleString()}</div>
+                          <div className="text-right">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              record.quality === 'A' ? 'bg-[#44AF69]/20 text-[#2D7A4A]' :
+                              record.quality === 'B' ? 'bg-[#F9C80E]/20 text-[#D4A80B]' :
+                              'bg-[#FF6B35]/20 text-[#C44D27]'
+                            }`}>
+                              {record.quality}级
+                            </span>
+                          </div>
+                          <div className="text-right text-[#4A4A6A]">{record.storageLocation}</div>
+                          <div className="text-right font-medium">¥ {(record.weight * record.unitPrice).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-[#E8E8F0]">
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-6 py-3 rounded-xl border border-[#E8E8F0] text-[#4A4A6A] font-medium hover:bg-[#F5F5FA] transition-colors"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
